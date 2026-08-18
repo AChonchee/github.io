@@ -198,6 +198,13 @@
       gap: .5rem
     }
 
+    /* ให้ attribute hidden ชนะ display ของ .row / .btn ที่ตั้งเป็น flex ไว้
+       ใช้ซ่อนปุ่มหรือแถวที่ไม่อยากให้ครูกดพลาดในคาบเรียน โดยไม่ต้องลบ element
+       (สคริปต์ยังอ้างถึง element เหล่านั้นอยู่ ถ้าลบจะ throw ตอน boot) */
+    [hidden] {
+      display: none !important
+    }
+
     .lbl {
       font-size: .75rem;
       color: rgba(255, 255, 255, .8)
@@ -526,14 +533,18 @@
         <div class="row">
           <button id="togglePlay" class="btn btn-primary"><span id="playIcon">▶️</span><span
               id="playText">เล่น</span></button>
-          <button id="prevSet" class="btn">← ชุดก่อน</button>
-          <button id="nextSet" class="btn">ชุดถัดไป →</button>
+          <!-- ปุ่มข้ามชุด ซ่อนไว้ — ยังข้ามชุดได้ด้วยปุ่มลูกศร ← → บนคีย์บอร์ด และปุ่มเลขชุดด้านล่าง
+               เปิดกลับมาใช้ได้โดยลบคำว่า hidden ออกจากสองแท็กนี้ -->
+          <button id="prevSet" class="btn" hidden>← ชุดก่อน</button>
+          <button id="nextSet" class="btn" hidden>ชุดถัดไป →</button>
           <button id="revealAllBtn" class="btn">👁 เฉลยทั้งหมด</button>
           <button id="ttsBtn" class="btn" title="เสียงเฉลยชื่อประเทศ">🔈</button>
           <button id="musicBtn" class="btn on" title="เพลงประกอบ">🎵</button>
           <button id="fsBtn" class="btn" title="เต็มจอ (F)">⛶</button>
         </div>
-        <div class="row">
+        <!-- แถวเลือกเพลง + ระดับเสียง — ซ่อนไว้ไม่ให้ครูกดพลาดในคาบเรียน
+             เปิดกลับมาใช้ได้โดยลบคำว่า hidden ออกจากแท็กนี้ (element ต้องคงอยู่ สคริปต์อ้างถึงอยู่) -->
+        <div class="row" id="musicRow" hidden>
           <span class="lbl">เพลง:</span>
           <input id="musicFile" type="file" accept="audio/*" style="display:none">
           <label for="musicFile" class="btn" style="padding:.35rem .8rem;font-size:.85rem">📁 เลือกเพลง</label>
@@ -631,7 +642,7 @@
 
     const L = (d, s, w) => `<path d="${d}" stroke="${s}" stroke-width="${w}" fill="none"/>`;
 
-    /** ธงยูเนียนแจ็ก — ใช้ทั้งในธงอังกฤษ และย่อลงมุมซ้ายบนของธงออสเตรเลีย */
+    /** ธงยูเนียนแจ็ก — ใช้ย่อลงมุมซ้ายบนของธงออสเตรเลียเพียงที่เดียว */
     function unionJack() {
       return BG('#012169')
         + L('M0,0 L90,60 M90,0 L0,60', '#ffffff', 13)
@@ -666,7 +677,8 @@
 
       { th: 'ฝรั่งเศส', f: () => vS(['#002395', '#FFFFFF', '#ED2939']) },
 
-      { th: 'อังกฤษ', f: () => unionJack() },
+      // กางเขนเซนต์จอร์จ — พื้นขาว กางเขนแดงหนา 12 = 1/5 ของความสูงธงตามสเปกจริง
+      { th: 'อังกฤษ', f: () => BG('#fff') + L('M45,0 V60 M0,30 H90', '#CE1124', 12) },
 
       {
         th: 'จีน', f: () => BG('#EE1C25') + STAR(15, 13, 8, '#FFDE00')
@@ -1123,7 +1135,7 @@
     function updateMusicNotice() {
       if (state.musicOn && Music.failed) {
         noticeEl.textContent = '🎵 โหลดเพลงไม่ได้ — ตรวจว่ามีไฟล์ ' + MUSIC_SRC
-          + ' อยู่ข้างไฟล์เกม หรือกดปุ่ม “เลือกเพลง” เพื่อเลือกไฟล์เอง (เกมยังเล่นได้ปกติ)';
+          + ' อยู่ข้างไฟล์เกม (เกมยังเล่นได้ปกติ แค่ไม่มีเสียงประกอบ)';
         noticeEl.classList.add('show');
       } else {
         updateVoiceNotice();
