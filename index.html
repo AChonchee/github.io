@@ -424,21 +424,6 @@
       display: flex
     }
 
-    .bubble {
-      width: 7rem;
-      height: 7rem;
-      border-radius: 999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 3rem;
-      color: #0f172a;
-      background: linear-gradient(135deg, #fde047, #fb7185);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, .4), inset 0 0 0 10px rgba(255, 255, 255, .22);
-      animation: pop 300ms ease-out;
-    }
-
     .chant-emoji {
       font-size: 5rem;
       line-height: 1;
@@ -534,7 +519,7 @@
     <header>
       <div>
         <h1>เกมท่องคำ ธงชาติ 🌏</h1>
-        <p class="subtitle">ทายธง 7 ประเทศ • สุ่มใหม่ทุกชุด 4 + 3 ใบ • 10 ชุด • เริ่มด้วย “หมู หมา กา ไก่”</p>
+        <p class="subtitle">ทายธง 7 ประเทศ • สุ่มใหม่ทุกชุด 4 + 3 ใบ • 10 ชุด • เตรียมตัว 3 วิ ครั้งเดียว → ทุกชุดขึ้น “หมู หมา กา ไก่”</p>
       </div>
 
       <div class="panel">
@@ -558,9 +543,9 @@
         </div>
         <div class="row">
           <span class="lbl">ความเร็ว:</span>
-          <input id="speed" type="range" min="1" max="5" step="1" value="3">
+          <input id="speed" type="range" min="1" max="5" step="1" value="5">
           <span class="tiny">ช้า</span>
-          <span class="lbl" id="speedLabel" style="font-weight:600">ระดับ 3</span>
+          <span class="lbl" id="speedLabel" style="font-weight:600">ระดับ 5</span>
           <span class="tiny">เร็ว</span>
         </div>
         <div class="row">
@@ -585,8 +570,9 @@
         <div id="cardsGrid"></div>
         <div id="spotlight" class="spotlight"></div>
 
-        <div id="countdown" class="overlay">
-          <div id="countText" class="bubble">3</div>
+        <div id="ready" class="overlay">
+          <div class="chant-word">เตรียมตัว…</div>
+          <div class="chant-dots" id="readyDots"><i></i><i></i><i></i></div>
         </div>
 
         <div id="chant" class="overlay">
@@ -722,7 +708,7 @@
     /* ==========================================================================
        3) ระบบเสียง — เพลงพื้นหลัง (ไฟล์เสียง) + เสียงอ่านไทย (Web Speech)
        ========================================================================== */
-    /** เพลงพื้นหลัง — ใช้ไฟล์จริงจากโฟลเดอร์ Song ข้าง index.html
+    /** เพลงพื้นหลัง — ใช้ไฟล์จริงที่วางไว้ข้าง index.html
      *  เปลี่ยนเพลงถาวร = แทนที่ไฟล์ที่ MUSIC_SRC ชี้ไป
      *  เปลี่ยนเฉพาะรอบนี้  = กดปุ่ม "เลือกเพลง" ในหน้าเกม */
     const MUSIC_SRC = 'sound01.mp3';
@@ -787,10 +773,9 @@
         this.thai = vs.find(v => /^th(-|_)?/i.test(v.lang)) || null;
         this.ready = vs.length > 0;
       },
-      /** force = true สำหรับท่อนเปิด "หมู หมา กา ไก่" ซึ่งไม่ใช่คำเฉลย
-       *  จึงพูดได้แม้ปุ่มเสียงเฉลย (🔊) จะปิดอยู่ */
-      say(text, force) {
-        if ((!state.ttsOn && !force) || !('speechSynthesis' in window) || !this.thai) return;
+      /** พูดคำเฉลยเท่านั้น — ท่อนเปิด "หมู หมา กา ไก่" ไม่ออกเสียง (แสดงภาพล้วน) */
+      say(text) {
+        if (!state.ttsOn || !('speechSynthesis' in window) || !this.thai) return;
         speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.voice = this.thai; u.lang = this.thai.lang; u.rate = 1.05; u.pitch = 1;
@@ -811,12 +796,16 @@
     const SPEED_MS = { 1: 1500, 2: 1100, 3: 800, 4: 600, 5: 400 };
     const TTS_MIN_MS = 800;                       // มีเสียงเฉลย -> ช้าสุดได้ 800ms ไม่งั้นเสียงถูกตัด
     const CHANT = [['🐷', 'หมู'], ['🐶', 'หมา'], ['🐦', 'กา'], ['🐔', 'ไก่']];
-    const CHANT_MS = 620;                         // จังหวะต่อคำของท่อนเปิด
+    const CHANT_FIRST_MS = 3000;                  // ท่อนเปิดชุดแรก 3.00 วินาที (4 คำ = คำละ 0.75 วิ)
+    const CHANT_NEXT_MS = 2750;                   // ชุดที่ 2 ขึ้นไป 2.75 วินาที เท่ากันหมด (คำละ 0.6875 วิ)
+    const READY_TICKS = 3;                        // ช่วง "เตรียมตัว" ก่อนท่อนเปิด — 3 จุด = 3 วินาที
+                                                  // (แก้เลขนี้ต้องแก้จำนวน <i> ใน #readyDots ให้เท่ากัน)
+    const READY_MS = 1000;                        // เวลาต่อ 1 จุด
 
     const state = {
       set: 0, idx: 0, playing: false, busy: false, starting: false,
       timer: null, deal: [], answers: [],
-      setCount: 10, level: 3, ttsOn: false, musicOn: true, volume: .6
+      setCount: 10, level: 5, ttsOn: false, musicOn: true, volume: .6
     };
 
     const $ = id => document.getElementById(id);
@@ -824,7 +813,7 @@
     const setPills = $('setPills'), playBtn = $('togglePlay'), playIcon = $('playIcon'), playText = $('playText');
     const speedEl = $('speed'), speedLabel = $('speedLabel'), setNo = $('setNo'), setTotal = $('setTotal'), bar = $('bar');
     const countBtns = { 5: $('count5'), 10: $('count10') };
-    const cdOverlay = $('countdown'), cdText = $('countText');
+    const readyOverlay = $('ready'), readyDots = $('readyDots');
     const chantOverlay = $('chant'), chantEmoji = $('chantEmoji'), chantWord = $('chantWord'), chantDots = $('chantDots');
     const revealAllBtn = $('revealAllBtn'), noticeEl = $('notice');
     const bgm = $('bgm'), musicBtn = $('musicBtn'), musicFile = $('musicFile'), musicName = $('musicName'), volumeEl = $('volume');
@@ -834,6 +823,11 @@
     function tickMs() {
       const ms = SPEED_MS[state.level];
       return (state.ttsOn && Voice.thai) ? Math.max(ms, TTS_MIN_MS) : ms;
+    }
+    /** จังหวะต่อคำของท่อนเปิดในชุดปัจจุบัน — ชุดแรกช้ากว่าเล็กน้อยให้เด็กจับจังหวะได้
+     *  ชุด 1 = 3.00 วิ, ชุด 2 ขึ้นไป = 2.75 วิ เท่ากันหมด (state.set นับจาก 0) */
+    function chantMs() {
+      return (state.set === 0 ? CHANT_FIRST_MS : CHANT_NEXT_MS) / CHANT.length;
     }
 
     /* ---------- ปุ่มเฉลย ---------- */
@@ -924,8 +918,23 @@
     }
 
     /* ---------- overlays ---------- */
+    /** ช่วงพักให้เด็กตั้งตัว + กวาดตาดูธงชุดใหม่ ก่อนขึ้นท่อนเปิด — จุดติดทีละดวงต่อวินาที */
+    async function runReady() {
+      readyOverlay.classList.add('show');
+      const dots = [...readyDots.children];
+      dots.forEach(d => d.classList.remove('on'));
+      for (let i = 0; i < READY_TICKS; i++) {
+        dots.forEach((d, j) => d.classList.toggle('on', j <= i));
+        await wait(READY_MS);
+        if (!state.starting && !state.playing) { readyOverlay.classList.remove('show'); return false; }
+      }
+      dots.forEach(d => d.classList.remove('on'));
+      readyOverlay.classList.remove('show');
+      return true;
+    }
     async function runChant() {
       chantOverlay.classList.add('show');
+      const ms = chantMs();                            // ล็อกจังหวะไว้ทั้งท่อน ไม่ให้เปลี่ยนกลางคัน
       const dots = [...chantDots.children];
       for (let i = 0; i < CHANT.length; i++) {
         dots.forEach((d, j) => d.classList.toggle('on', j <= i));
@@ -934,22 +943,19 @@
         chantEmoji.style.animation = 'none'; chantWord.style.animation = 'none';
         void chantEmoji.offsetWidth;
         chantEmoji.style.animation = ''; chantWord.style.animation = '';
-        Voice.say(CHANT[i][1], true);                    // ท่อนเปิดพูดได้แม้ 🔊 ปิด
-        await wait(CHANT_MS);
+        await wait(ms);
         if (!state.starting && !state.playing) { chantOverlay.classList.remove('show'); return false; }
       }
       dots.forEach(d => d.classList.remove('on'));
       chantOverlay.classList.remove('show');
       return true;
     }
-    async function runCountdown() {
-      cdOverlay.classList.add('show');
-      for (const s of ['3', '2', '1']) {
-        cdText.textContent = s;
-        cdText.style.animation = 'none'; void cdText.offsetWidth; cdText.style.animation = '';
-        await wait(s === '1' ? 500 : 700);          // เพลงเล่นต่อเนื่อง ไม่ตัดระหว่างเปลี่ยนชุด
-      }
-      cdOverlay.classList.remove('show');
+
+    /** ท่อนเปิด — "เตรียมตัว" ขึ้นครั้งเดียวตอนเริ่มรอบ (withReady) ชุดถัดไปขึ้นแค่ หมู หมา กา ไก่
+     *  คืน false เมื่อครูกดหยุดระหว่างท่อนเปิด */
+    async function runIntro(withReady) {
+      if (withReady && !(await runReady())) return false;
+      return runChant();
     }
 
     /* ---------- loop ---------- */
@@ -974,8 +980,8 @@
       state.set++; state.idx = 0;
       state.deal = dealSet();
       renderSet();
-      await runCountdown();
-      if (!state.playing) { state.busy = false; return; }
+      const ok = await runIntro(false);               // ชุดถัดไป — ไม่ขึ้น "เตรียมตัว" ซ้ำ
+      if (!ok || !state.playing) { state.busy = false; return; }
       spotlight.classList.add('on');
       highlight(); moveSpotlight(true); updateBar(); announce();
       state.timer = setInterval(tick, tickMs());
@@ -985,7 +991,6 @@
     async function start() {
       if (state.playing || state.starting) return;
       state.starting = true;
-      playBtn.disabled = true;
       Music.play();                                 // เริ่มพร้อมท่อนเปิด (คลิกปุ่มเล่น = user gesture)
 
       state.set = 0; state.idx = 0;
@@ -994,12 +999,11 @@
 
       playIcon.textContent = '⏸️'; playText.textContent = 'หยุด';
 
-      const ok = await runChant();
-      if (!ok) { state.starting = false; playBtn.disabled = false; resetIdle(); return; }
+      const ok = await runIntro(true);                // เริ่มรอบ — ขึ้น "เตรียมตัว" ครั้งเดียวที่นี่
+      if (!ok) return;                               // ครูกดหยุดกลางท่อนเปิด — stop() เก็บสถานะให้แล้ว
 
       state.playing = true;
       state.starting = false;
-      playBtn.disabled = false;
       spotlight.classList.add('on');
       highlight(); moveSpotlight(true); updateBar(); announce();
       state.timer = setInterval(tick, tickMs());
@@ -1011,8 +1015,7 @@
       Voice.stop();
       Music.stop();
       playIcon.textContent = '▶️'; playText.textContent = 'เล่น';
-      playBtn.disabled = false;
-      cdOverlay.classList.remove('show'); chantOverlay.classList.remove('show');
+      readyOverlay.classList.remove('show'); chantOverlay.classList.remove('show');
       resetIdle();
     }
     function resetIdle() {
@@ -1036,9 +1039,11 @@
     }
 
     /* ---------- controls ---------- */
-    playBtn.addEventListener('click', () => { state.playing ? stop() : start(); });
-    $('prevSet').addEventListener('click', () => { if (state.playing) stop(); goToSet((state.set - 1 + state.setCount) % state.setCount); });
-    $('nextSet').addEventListener('click', () => { if (state.playing) stop(); goToSet((state.set + 1) % state.setCount); });
+    /** ระหว่างท่อนเปิด (starting) ก็ต้องกดหยุดได้ ไม่ใช่รอจนสปอตไลต์เริ่มวิ่ง */
+    const running = () => state.playing || state.starting;
+    playBtn.addEventListener('click', () => { running() ? stop() : start(); });
+    $('prevSet').addEventListener('click', () => { if (running()) stop(); goToSet((state.set - 1 + state.setCount) % state.setCount); });
+    $('nextSet').addEventListener('click', () => { if (running()) stop(); goToSet((state.set + 1) % state.setCount); });
 
     /* ---------- จำนวนชุดต่อรอบ (5 / 10) ---------- */
     function syncCountButtons() {
@@ -1065,6 +1070,11 @@
       syncRevealAll();
     });
 
+    /** ค่าตั้งต้นความเร็วมีที่มาเดียว = state.level — แถบเลื่อนกับป้ายชื่อ sync ตามตอน boot */
+    function syncSpeed() {
+      speedEl.value = state.level;
+      speedLabel.textContent = 'ระดับ ' + state.level;
+    }
     speedEl.addEventListener('input', e => {
       state.level = +e.target.value;
       speedLabel.textContent = 'ระดับ ' + state.level;
@@ -1101,9 +1111,9 @@
 
     document.addEventListener('keydown', e => {
       if (e.target.tagName === 'INPUT') return;
-      if (e.code === 'Space') { e.preventDefault(); state.playing ? stop() : start(); }
-      else if (e.key === 'ArrowRight') { if (state.playing) stop(); goToSet((state.set + 1) % state.setCount); }
-      else if (e.key === 'ArrowLeft') { if (state.playing) stop(); goToSet((state.set - 1 + state.setCount) % state.setCount); }
+      if (e.code === 'Space') { e.preventDefault(); running() ? stop() : start(); }
+      else if (e.key === 'ArrowRight') { if (running()) stop(); goToSet((state.set + 1) % state.setCount); }
+      else if (e.key === 'ArrowLeft') { if (running()) stop(); goToSet((state.set - 1 + state.setCount) % state.setCount); }
       else if (e.key === 'f' || e.key === 'F') { toggleFs(); }
     });
     window.addEventListener('resize', () => moveSpotlight(true));
@@ -1188,6 +1198,7 @@
         const saved = parseInt(localStorage.getItem('flagGame.setCount'), 10);
         if (SET_CHOICES.indexOf(saved) >= 0) state.setCount = saved;
       } catch (e) { }
+      syncSpeed();                                 // แถบ + ป้ายชื่อ อ่านค่าตั้งต้นจาก state.level
       syncCountButtons();
       Music.init(bgm);
       buildPills();
